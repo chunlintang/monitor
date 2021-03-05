@@ -1,0 +1,11 @@
+groups:
+  - name: rule-1
+    rules:
+      - alert: "服务运行告警"
+        expr: up{job="cadvisor"} < 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "服务名: {{$labels.alertname}}"
+          description: "容器cadvisor已停止"

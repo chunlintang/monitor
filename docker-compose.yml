@@ -1,0 +1,82 @@
+version: "3.8"
+services:
+  cAdvisor:
+    image: google/cadvisor:v0.33.0
+    container_name: cadvisor
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 500M
+    networks:
+      - monitor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  Prometheus:
+    image: prom/prometheus:v2.19.2
+    container_name: prometheus
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 500M
+    volumes:
+      - ./prometheus/conf:/etc/prometheus:ro
+    networks:
+      - monitor
+    depends_on:
+      - cAdvisor
+    ports:
+      - "9090:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.21.0
+    container_name: alertmanager
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 500M
+    networks:
+      - monitor
+    ports:
+      - "9093:9093"
+    depends_on:
+      - Prometheus
+    volumes:
+      - ./alertmanager/conf/config.yml:/etc/alertmanager/config.yml
+      - ./alertmanager/templates:/etc/alertmanager/templates
+    command:
+      - "--config.file=/etc/alertmanager/config.yml"
+      - "--storage.path=/alertmanager"
+      - "--log.level=info"
+
+  Grafana:
+    image: grafana/grafana:7.0.5
+    container_name: grafana
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 500M
+    networks:
+      - monitor
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=123456
+    depends_on:
+      - Prometheus
+    ports:
+      - "3000:3000"
+networks:
+  monitor:
+    name: monitornet
+    driver: bridge
